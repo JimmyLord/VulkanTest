@@ -30,9 +30,12 @@ VulkanWindow::~VulkanWindow()
 
 VkSurfaceKHR VulkanWindow::Create(VkInstance vulkanInstance, const char* windowTitle, int width, int height)
 {
+    assert( m_hInstance == 0 );
+    assert( m_hWnd == 0 );
+
     // Create instance of window.
     {
-        m_hInstance = GetModuleHandle( 0 );                      // Grab An Instance For Our Window
+        m_hInstance = GetModuleHandle( 0 ); // Grab an instance for our window.
         if( m_hInstance == 0 )
         {
             MessageBox( 0, "GetModuleHandle failed.", "ERROR", MB_OK|MB_ICONEXCLAMATION );
@@ -43,16 +46,16 @@ VkSurfaceKHR VulkanWindow::Create(VkInstance vulkanInstance, const char* windowT
     // Register a window class.
     {
         WNDCLASS windowClass = {};
-        windowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;  // Redraw On Move, And Own DC For Window
-        windowClass.lpfnWndProc = (WNDPROC)WndProc;              // WndProc Handles Messages
-        windowClass.cbClsExtra = 0;                              // No Extra Window Data
-        windowClass.cbWndExtra = 0;                              // No Extra Window Data
-        windowClass.hInstance = m_hInstance;                     // Set The Instance
-        windowClass.hIcon = LoadIcon( 0, IDI_WINLOGO );          // Load The Default Icon
-        windowClass.hCursor = LoadCursor( 0, IDC_ARROW );        // Load The Arrow Pointer
-        windowClass.hbrBackground = 0;                           // No Background Required For GL
-        windowClass.lpszMenuName = 0;                            // We Don't Want A Menu
-        windowClass.lpszClassName = "VulkanWindowClass";         // Set The Class Name
+        windowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;  // Redraw on move, and own DC for window.
+        windowClass.lpfnWndProc = (WNDPROC)StaticWndProc;        // WndProc handles messages.
+        windowClass.cbClsExtra = 0;                              // No extra window data.
+        windowClass.cbWndExtra = 0;                              // No extra window data.
+        windowClass.hInstance = m_hInstance;                     // Set the instance.
+        windowClass.hIcon = LoadIcon( 0, IDI_WINLOGO );          // Load the default icon.
+        windowClass.hCursor = LoadCursor( 0, IDC_ARROW );        // Load the arrow pointer.
+        windowClass.hbrBackground = 0;                           // No background required.
+        windowClass.lpszMenuName = 0;                            // We don't want a menu.
+        windowClass.lpszClassName = "VulkanWindowClass";         // Set the class name.
 
         if( !RegisterClass( &windowClass ) )
         {
@@ -73,19 +76,19 @@ VkSurfaceKHR VulkanWindow::Create(VkInstance vulkanInstance, const char* windowT
         DWORD dwExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
         DWORD dwStyle = WS_OVERLAPPEDWINDOW;
 
-        AdjustWindowRectEx( &WindowRect, dwStyle, false, dwExStyle );  // Adjust Window To True Requested Size
+        AdjustWindowRectEx( &WindowRect, dwStyle, false, dwExStyle );  // Adjust window to true requested size.
 
-        m_hWnd = CreateWindowEx( dwExStyle,                            // Extended Style For The Window
-                                 "VulkanWindowClass",                  // Class Name
-                                 windowTitle,                          // Window Title
-                                 WS_CLIPSIBLINGS | WS_CLIPCHILDREN |   // Required Window Style
-                                     dwStyle,                          // Selected Window Style
-                                 0, 0,                                 // Window Position
-                                 WindowRect.right-WindowRect.left,     // Calculate Adjusted Window Width
-                                 WindowRect.bottom-WindowRect.top,     // Calculate Adjusted Window Height
-                                 0,                                    // No Parent Window
-                                 0,                                    // No Menu
-                                 m_hInstance,                          // Instance
+        m_hWnd = CreateWindowEx( dwExStyle,                            // Extended style for the window.
+                                 "VulkanWindowClass",                  // Class name.
+                                 windowTitle,                          // Window title.
+                                 WS_CLIPSIBLINGS | WS_CLIPCHILDREN |   // Required window style.
+                                     dwStyle,                          // Selected window style.
+                                 0, 0,                                 // Window position.
+                                 WindowRect.right-WindowRect.left,     // Calculate adjusted window width.
+                                 WindowRect.bottom-WindowRect.top,     // Calculate adjusted window height.
+                                 0,                                    // No parent window.
+                                 0,                                    // No menu.
+                                 m_hInstance,                          // Instance.
                                  this );                               // Pass a pointer to this object to WM_NCCREATE.
 
         if( m_hWnd == 0 )
@@ -95,12 +98,12 @@ VkSurfaceKHR VulkanWindow::Create(VkInstance vulkanInstance, const char* windowT
             return VK_NULL_HANDLE;
         }
 
-        ShowWindow( m_hWnd, SW_SHOW );   // Show The Window
-        SetForegroundWindow( m_hWnd );   // Slightly Higher Priority
-        SetFocus( m_hWnd );              // Sets Keyboard Focus To The Window
+        ShowWindow( m_hWnd, SW_SHOW );   // Show the window.
+        SetForegroundWindow( m_hWnd );   // Slightly higher priority.
+        SetFocus( m_hWnd );              // Sets keyboard focus to the window.
     }
 
-    // Create Vulkan Surface.
+    // Create Vulkan surface.
     {
         VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
         surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
@@ -138,9 +141,9 @@ void VulkanWindow::Destroy()
 }
 
 // This is a static method.
-LRESULT CALLBACK VulkanWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK VulkanWindow::StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    // Get a pointer to the VulkanWindow object associated with this window.
+    // Get a pointer to the VulkanWindow object associated with this window, will be nullptr until WM_NCCREATE is processed.
     VulkanWindow* pVulkanWindow = (VulkanWindow*)GetWindowLongPtr( hWnd, GWLP_USERDATA );
 
     switch( uMsg )
@@ -149,22 +152,40 @@ LRESULT CALLBACK VulkanWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         {
             // Set the user data for this hWnd to the VulkanWindow* we passed in, used on first line of this method above.
             CREATESTRUCT* pcs = (CREATESTRUCT*)lParam;
-            VulkanWindow* pVulkanWindow = (VulkanWindow*)pcs->lpCreateParams;
+            pVulkanWindow = (VulkanWindow*)pcs->lpCreateParams;
             SetWindowLongPtr( hWnd, GWLP_USERDATA, (LONG)pVulkanWindow );
 
             pVulkanWindow->m_hWnd = hWnd;
         }
         return 1;
+    }
+
+    if( pVulkanWindow == 0 )
+        return 0;
+
+    return pVulkanWindow->WndProc( hWnd, uMsg, wParam, lParam );
+}
     
+LRESULT CALLBACK VulkanWindow::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch( uMsg )
+    {
     case WM_DESTROY:
         {
-            pVulkanWindow->m_hWnd = nullptr;
+            m_hWnd = nullptr;
         }
         return 0;
 
     case WM_CLOSE:
         {
             PostQuitMessage( 0 );
+        }
+        return 0;
+
+    case WM_KEYDOWN:
+        {
+            if( wParam == VK_ESCAPE )
+                PostQuitMessage( 0 );
         }
         return 0;
     }

@@ -4,6 +4,12 @@
     <Filter Include="Source">
       <UniqueIdentifier>{7f7461a9-8418-4c02-ba81-f57308f8c304}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{e91f1057-12a3-4df9-911d-4feda8dfd632}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data\Shaders">
+      <UniqueIdentifier>{af0e5f29-f908-4387-bd76-2f138992337b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\main.cpp">
@@ -15,6 +21,12 @@
     <ClCompile Include="Source\VulkanWindow.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\VulkanShader.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\VulkanBuffer.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\VulkanInterface.h">
@@ -23,5 +35,19 @@
     <ClInclude Include="Source\VulkanWindow.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="Source\VulkanShader.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\VulkanBuffer.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\Shaders\test.frag">
+      <Filter>Data\Shaders</Filter>
+    </None>
+    <None Include="Data\Shaders\test.vert">
+      <Filter>Data\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

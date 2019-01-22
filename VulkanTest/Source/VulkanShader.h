@@ -7,30 +7,32 @@
 // 2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#ifndef __VulkanWindow_H__
-#define __VulkanWindow_H__
+#ifndef __VulkanShader_H__
+#define __VulkanShader_H__
 
-#include <Windows.h>
+#include "vulkan/vulkan.h"
+#include "VulkanShader.h"
 
-class VulkanInterface;
-
-class VulkanWindow
+class VulkanShader
 {
-    friend class VulkanInterface;
+protected:
+    VkShaderModule m_VertexShader;
+    VkShaderModule m_FragmentShader;
+
+    VkDevice m_Device;
 
 protected:
-    HINSTANCE m_hInstance;
-    HWND m_hWnd;
+    VkShaderModule CreateShader(const char* string, const size_t stringLength);
 
-protected:
-    VulkanWindow();
-    virtual ~VulkanWindow();
+public:
+    VulkanShader();
+    virtual ~VulkanShader();
 
-    VkSurfaceKHR Create(VkInstance vulkanInstance, const char* windowName, int width, int height);
+    void Create(VkDevice device, const char* vertexShaderFilename, const char* fragmentShaderFilename);
     void Destroy();
 
-    static LRESULT CALLBACK StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    virtual LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    VkShaderModule GetVertexShader() { return m_VertexShader; }
+    VkShaderModule GetFragmentShader() { return m_FragmentShader; }
 };
 
-#endif //__VulkanWindow_H__
+#endif //__VulkanShader_H__

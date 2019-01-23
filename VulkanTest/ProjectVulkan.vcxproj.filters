@@ -10,6 +10,9 @@
     <Filter Include="Data\Shaders">
       <UniqueIdentifier>{af0e5f29-f908-4387-bd76-2f138992337b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Math">
+      <UniqueIdentifier>{a2acc32d-e3ad-44e0-abae-f3bd522c5702}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\main.cpp">
@@ -27,6 +30,15 @@
     <ClCompile Include="Source\VulkanBuffer.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Math\MyMatrix.cpp">
+      <Filter>Source\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Math\MyQuaternion.cpp">
+      <Filter>Source\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Math\MyTypes.cpp">
+      <Filter>Source\Math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\VulkanInterface.h">
@@ -40,6 +52,24 @@
     </ClInclude>
     <ClInclude Include="Source\VulkanBuffer.h">
       <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Math\MyMatrix.h">
+      <Filter>Source\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Math\Vector.h">
+      <Filter>Source\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Structs.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Math\MyQuaternion.h">
+      <Filter>Source\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Math\Utility.h">
+      <Filter>Source\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Math\MyTypes.h">
+      <Filter>Source\Math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -13,6 +13,7 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan/vk_sdk_platform.h"
 
+#include "Structs.h"
 #include "VulkanBuffer.h"
 #include "VulkanInterface.h"
 
@@ -33,37 +34,12 @@ VulkanBuffer::~VulkanBuffer()
 {
 }
 
-void VulkanBuffer::Create(VulkanInterface* pInterface)
+void VulkanBuffer::Create(VulkanInterface* pInterface, VkBufferUsageFlags usageFlags, const void* pData, unsigned int sizeInBytes)
 {
     assert( m_Buffer == VK_NULL_HANDLE );
-    assert( m_pInterface == nullptr );
+    assert( pInterface != nullptr );
 
     m_pInterface = pInterface;
-
-    const VertexFormat vertices[] =
-    {
-        { { 0.0f, -0.5f}, { 255,   0,   0 } },
-        { { 0.5f,  0.5f}, {   0, 255,   0 } },
-        { {-0.5f,  0.5f}, {   0,   0, 255 } },
-    };
-    int vertexCount = 3;
-
-    BufferData( vertices, sizeof( VertexFormat ) * vertexCount );
-}
-
-void VulkanBuffer::Destroy()
-{
-    vkFreeMemory( m_pInterface->GetDevice(), m_BufferMemory, nullptr );
-    vkDestroyBuffer( m_pInterface->GetDevice(), m_Buffer, nullptr );
-    
-    m_Buffer = VK_NULL_HANDLE;
-    m_pInterface = nullptr;
-}
-
-void VulkanBuffer::BufferData(const void* pData, unsigned int sizeInBytes)
-{
-    assert( m_Buffer == VK_NULL_HANDLE );
-    assert( m_pInterface != nullptr );
 
     VkDevice device = m_pInterface->GetDevice();
 
@@ -74,7 +50,7 @@ void VulkanBuffer::BufferData(const void* pData, unsigned int sizeInBytes)
         bufferInfo.pNext = nullptr;
         bufferInfo.flags = 0;
         bufferInfo.size = sizeInBytes;
-        bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferInfo.usage = usageFlags;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         bufferInfo.queueFamilyIndexCount = 0;
         bufferInfo.pQueueFamilyIndices = nullptr;
@@ -100,12 +76,31 @@ void VulkanBuffer::BufferData(const void* pData, unsigned int sizeInBytes)
         vkBindBufferMemory( device, m_Buffer, m_BufferMemory, 0 );
     }
 
-    // Buffer data.
+    // Buffer data, if a data pointer was passed in.
+    if( pData != nullptr )
     {
-        void* data;
-        vkMapMemory( device, m_BufferMemory, 0, sizeInBytes, 0, &data );
-        memcpy( data, pData, sizeInBytes );
-        vkUnmapMemory( device, m_BufferMemory );
+        BufferData( pData, sizeInBytes );
     }
 }
 
+void VulkanBuffer::Destroy()
+{
+    vkFreeMemory( m_pInterface->GetDevice(), m_BufferMemory, nullptr );
+    vkDestroyBuffer( m_pInterface->GetDevice(), m_Buffer, nullptr );
+    
+    m_Buffer = VK_NULL_HANDLE;
+    m_pInterface = nullptr;
+}
+
+void VulkanBuffer::BufferData(const void* pData, unsigned int sizeInBytes)
+{
+    assert( pData != nullptr );
+    assert( m_pInterface != nullptr );
+
+    VkDevice device = m_pInterface->GetDevice();
+
+    void* data;
+    vkMapMemory( device, m_BufferMemory, 0, sizeInBytes, 0, &data );
+    memcpy( data, pData, sizeInBytes );
+    vkUnmapMemory( device, m_BufferMemory );
+}

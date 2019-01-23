@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Jimmy Lord http://www.flatheadgames.com
+// Copyright (c) 2016 Jimmy Lord http://www.flatheadgames.com
 //
 // This software is provided 'as-is', without any express or implied warranty.  In no event will the authors be held liable for any damages arising from the use of this software.
 // Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
@@ -7,34 +7,15 @@
 // 2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#ifndef __VulkanBuffer_H__
-#define __VulkanBuffer_H__
+#include "MyTypes.h"
+#include "Utility.h"
 
-#include "vulkan/vulkan.h"
-#include "VulkanBuffer.h"
-
-class VulkanInterface;
-
-class VulkanBuffer
+void TestMyTypeSizes()
 {
-    friend class VulkanInterface;
+    bool ok;
 
-protected:
-    VkBuffer m_Buffer;
-    VkDeviceMemory m_BufferMemory;
-
-    VulkanInterface* m_pInterface;
-
-protected:
-
-public:
-    VulkanBuffer();
-    virtual ~VulkanBuffer();
-
-    void Create(VulkanInterface* pInterface, VkBufferUsageFlags usageFlags, const void* pData, unsigned int sizeInBytes);
-    void Destroy();
-
-    void BufferData(const void* pData, unsigned int sizeInBytes);
-};
-
-#endif //__VulkanBuffer_H__
+    sizeof( int32 ) == 4  ? ok = true : ok = false; MyAssert( ok ); if( !ok ) LOGError( LOGTag, "TYPE TEST FAILED!!!!\n" );
+    sizeof( uint32 ) == 4 ? ok = true : ok = false; MyAssert( ok ); if( !ok ) LOGError( LOGTag, "TYPE TEST FAILED!!!!\n" );
+    sizeof( int64 ) == 8  ? ok = true : ok = false; MyAssert( ok ); if( !ok ) LOGError( LOGTag, "TYPE TEST FAILED!!!!\n" );
+    sizeof( uint64 ) == 8 ? ok = true : ok = false; MyAssert( ok ); if( !ok ) LOGError( LOGTag, "TYPE TEST FAILED!!!!\n" );
+}

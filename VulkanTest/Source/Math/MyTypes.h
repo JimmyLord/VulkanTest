@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Jimmy Lord http://www.flatheadgames.com
+// Copyright (c) 2016-2017 Jimmy Lord http://www.flatheadgames.com
 //
 // This software is provided 'as-is', without any express or implied warranty.  In no event will the authors be held liable for any damages arising from the use of this software.
 // Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
@@ -7,34 +7,41 @@
 // 2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#ifndef __VulkanBuffer_H__
-#define __VulkanBuffer_H__
+#ifndef __MYTYPES_H__
+#define __MYTYPES_H__
 
-#include "vulkan/vulkan.h"
-#include "VulkanBuffer.h"
+#if 1 //MYFW_WINDOWS
 
-class VulkanInterface;
+typedef __int32 int32;
+typedef unsigned __int32 uint32;
+typedef __int64 int64;
+typedef unsigned __int64 uint64;
 
-class VulkanBuffer
-{
-    friend class VulkanInterface;
+#elif MYFW_NACL || MYFW_LINUX
 
-protected:
-    VkBuffer m_Buffer;
-    VkDeviceMemory m_BufferMemory;
+typedef __int32_t int32;
+typedef __uint32_t uint32;
+typedef __int64_t int64;
+typedef __uint64_t uint64;
 
-    VulkanInterface* m_pInterface;
+#elif MYFW_BLACKBERRY10 || MYFW_EMSCRIPTEN
 
-protected:
+#include <stdint.h>
 
-public:
-    VulkanBuffer();
-    virtual ~VulkanBuffer();
+typedef int32_t int32;
+typedef uint32_t uint32;
+typedef int64_t int64;
+typedef uint64_t uint64;
 
-    void Create(VulkanInterface* pInterface, VkBufferUsageFlags usageFlags, const void* pData, unsigned int sizeInBytes);
-    void Destroy();
+#else
 
-    void BufferData(const void* pData, unsigned int sizeInBytes);
-};
+typedef int32_t int32;
+typedef uint32_t uint32;
+typedef int64_t int64;
+typedef uint64_t uint64;
 
-#endif //__VulkanBuffer_H__
+#endif
+
+void TestMyTypeSizes();
+
+#endif //__MYTYPES_H__

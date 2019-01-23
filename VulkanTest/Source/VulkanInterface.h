@@ -23,7 +23,9 @@ class VulkanInterface
 protected:
     VulkanWindow* m_Window;
     VulkanShader* m_TempShader;
-    VulkanBuffer* m_TestBuffer;
+    VulkanBuffer* m_TriangleBuffer;
+    VkDescriptorSetLayout m_UBODescriptorSet;
+    VulkanBuffer* m_UniformBuffer_Matrices[3];
 
     VkInstance m_VulkanInstance;
     VkPhysicalDevice m_PhysicalDevice;
@@ -66,8 +68,9 @@ protected:
     void CreateSwapchain();
     void CreateCommandBufferPool();
     void CreateSemaphores();
-    void CreateRenderPassAndPipeline();
+    void CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayout);
 
+    VkDescriptorSetLayout CreateUBODescriptorSetLayout();
     VkCommandBuffer CreateCommandBuffer();
     void SetupCommandBuffers();
 

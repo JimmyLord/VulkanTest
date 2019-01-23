@@ -17,6 +17,8 @@
 #include "VulkanShader.h"
 #include "VulkanBuffer.h"
 
+#include "Structs.h"
+
 VulkanInterface::VulkanInterface()
 {
     NullEverything();
@@ -30,7 +32,8 @@ void VulkanInterface::NullEverything()
 {
     m_Window = nullptr;
     m_TempShader = nullptr;
-    m_TestBuffer = nullptr;
+    m_TriangleBuffer = nullptr;
+    m_UBODescriptorSet = VK_NULL_HANDLE;
 
     m_VulkanInstance = VK_NULL_HANDLE;
     m_PhysicalDevice = VK_NULL_HANDLE;
@@ -54,6 +57,7 @@ void VulkanInterface::NullEverything()
         m_SwapchainImageViews[i] = VK_NULL_HANDLE;
         m_SwapchainCommandBuffers[i] = VK_NULL_HANDLE;
         m_Framebuffers[i] = VK_NULL_HANDLE;
+        m_UniformBuffer_Matrices[i] = nullptr;
     }
     m_CurrentSwapchainImageIndex = UINT_MAX;
 
@@ -76,10 +80,35 @@ void VulkanInterface::Create(const char* windowName, int width, int height)
     CreateCommandBufferPool();
     CreateSemaphores();
 
-    m_TestBuffer = new VulkanBuffer();
-    m_TestBuffer->Create( this );
+    // Copy triangle verts into a buffer.
+    {
+        m_TriangleBuffer = new VulkanBuffer();
+        const VertexFormat vertices[] =
+        {
+            { { 0.0f, -0.5f}, { 255,   0,   0 } },
+            { { 0.5f,  0.5f}, {   0, 255,   0 } },
+            { {-0.5f,  0.5f}, {   0,   0, 255 } },
+        };
+        int vertexCount = 3;
 
-    CreateRenderPassAndPipeline();
+        m_TriangleBuffer->Create( this, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof( VertexFormat ) * vertexCount );
+    }
+
+    m_UBODescriptorSet = CreateUBODescriptorSetLayout();
+    CreateRenderPassAndPipeline( m_UBODescriptorSet );
+
+    // Create UBOs for matrices.  One per swapchain image.
+    for( int i=0; i<3; i++ )
+    {
+        m_UniformBuffer_Matrices[i] = new VulkanBuffer();
+        //UniformBufferObject_Matrices matrices;
+        //matrices.m_World.SetIdentity();
+        //matrices.m_View.SetIdentity();
+        //matrices.m_Proj.SetIdentity();
+
+        //m_UniformBuffer_Matrices[i]->Create( this, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &matrices, sizeof( UniformBufferObject_Matrices ) );
+        m_UniformBuffer_Matrices[i]->Create( this, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, nullptr, sizeof( UniformBufferObject_Matrices ) );
+    }
 
     SetupCommandBuffers();
 }
@@ -87,6 +116,8 @@ void VulkanInterface::Create(const char* windowName, int width, int height)
 void VulkanInterface::Destroy()
 {
     // Destroy Vulkan objects.
+    vkDestroyDescriptorSetLayout( m_Device, m_UBODescriptorSet, nullptr );
+
     vkDestroyPipelineLayout( m_Device, m_PipelineLayout, nullptr );
     vkDestroyPipeline( m_Device, m_Pipeline, nullptr );
     vkDestroyRenderPass( m_Device, m_RenderPass, nullptr );
@@ -105,7 +136,11 @@ void VulkanInterface::Destroy()
     }
 
     delete m_TempShader;
-    delete m_TestBuffer;
+    delete m_TriangleBuffer;
+    for( int i=0; i<3; i++ )
+    {
+        delete m_UniformBuffer_Matrices[i];
+    }
 
     vkDestroyDevice( m_Device, nullptr );
 
@@ -401,6 +436,29 @@ void VulkanInterface::CreateSemaphores()
     assert( result == VK_SUCCESS );
 }
 
+VkDescriptorSetLayout VulkanInterface::CreateUBODescriptorSetLayout()
+{
+    VkDescriptorSetLayoutBinding layoutBinding = {};
+    layoutBinding.binding = 0;
+    layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    layoutBinding.descriptorCount = 1;
+    layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    layoutBinding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layoutCreateInfo = {};
+    layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutCreateInfo.pNext = nullptr;
+    layoutCreateInfo.flags = 0;
+    layoutCreateInfo.bindingCount = 1;
+    layoutCreateInfo.pBindings = &layoutBinding;
+
+    VkDescriptorSetLayout layout;
+    VkResult result = vkCreateDescriptorSetLayout( m_Device, &layoutCreateInfo, nullptr, &layout );
+    assert( result == VK_SUCCESS );
+
+    return layout;
+}
+
 VkCommandBuffer VulkanInterface::CreateCommandBuffer()
 {
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
@@ -419,7 +477,7 @@ VkCommandBuffer VulkanInterface::CreateCommandBuffer()
     return commandBuffer;
 }
 
-void VulkanInterface::CreateRenderPassAndPipeline()
+void VulkanInterface::CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayout)
 {
     VkResult result;
 
@@ -657,8 +715,8 @@ void VulkanInterface::CreateRenderPassAndPipeline()
         pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutCreateInfo.pNext = nullptr;
         pipelineLayoutCreateInfo.flags = 0;
-        pipelineLayoutCreateInfo.setLayoutCount = 0;
-        pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+        pipelineLayoutCreateInfo.setLayoutCount = 1;
+        pipelineLayoutCreateInfo.pSetLayouts = &uboLayout;
         pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
         pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
@@ -742,7 +800,7 @@ void VulkanInterface::SetupCommandBuffers()
 
         vkCmdBindPipeline( m_SwapchainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline );
 
-        VkBuffer vertexBuffers[] = { m_TestBuffer->m_Buffer };
+        VkBuffer vertexBuffers[] = { m_TriangleBuffer->m_Buffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers( m_SwapchainCommandBuffers[i], 0, 1, vertexBuffers, offsets );
 
@@ -777,10 +835,21 @@ void VulkanInterface::Render()
     VkResult result = vkAcquireNextImageKHR( m_Device, m_Swapchain, UINT64_MAX, m_ImageAcquiredSemaphore, VK_NULL_HANDLE, &m_CurrentSwapchainImageIndex );
     assert( result == VK_SUCCESS );
 
+    // Update our UBO.
+    {
+        UniformBufferObject_Matrices matrices;
+        matrices.m_World.SetIdentity();
+        matrices.m_View.SetIdentity();
+        matrices.m_Proj.SetIdentity();
+
+        m_UniformBuffer_Matrices[m_CurrentSwapchainImageIndex]->BufferData( &matrices, sizeof( UniformBufferObject_Matrices ) );
+    }
+
     VkSemaphore waitSemaphores[] = { m_ImageAcquiredSemaphore };
     VkSemaphore signalSemaphores[] = { m_DrawCompleteSemaphore };
 
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.pNext = nullptr;

@@ -64,6 +64,12 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(SolutionDir)Libraries/Vulkan/lib32/vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CustomBuildStep>
+      <Command>cd Data/Shaders &amp;&amp; compile</Command>
+      <Outputs>Data/Shaders/spv.test.vs;Data/Shaders/spv.test.fs</Outputs>
+      <Inputs>Data/Shaders/test.vert;Data/Shaders/test.frag</Inputs>
+      <Message>Compiling Shaders</Message>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -86,12 +92,21 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\main.cpp" />
+    <ClCompile Include="Source\Math\MyMatrix.cpp" />
+    <ClCompile Include="Source\Math\MyQuaternion.cpp" />
+    <ClCompile Include="Source\Math\MyTypes.cpp" />
     <ClCompile Include="Source\VulkanBuffer.cpp" />
     <ClCompile Include="Source\VulkanInterface.cpp" />
     <ClCompile Include="Source\VulkanShader.cpp" />
     <ClCompile Include="Source\VulkanWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Math\MyMatrix.h" />
+    <ClInclude Include="Source\Math\MyQuaternion.h" />
+    <ClInclude Include="Source\Math\MyTypes.h" />
+    <ClInclude Include="Source\Math\Utility.h" />
+    <ClInclude Include="Source\Math\Vector.h" />
+    <ClInclude Include="Source\Structs.h" />
     <ClInclude Include="Source\VulkanBuffer.h" />
     <ClInclude Include="Source\VulkanInterface.h" />
     <ClInclude Include="Source\VulkanShader.h" />

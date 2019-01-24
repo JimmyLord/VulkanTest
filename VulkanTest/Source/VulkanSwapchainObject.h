@@ -7,36 +7,32 @@
 // 2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 
-#ifndef __VulkanBuffer_H__
-#define __VulkanBuffer_H__
+#ifndef __VulkanSwapchainObject_H__
+#define __VulkanSwapchainObject_H__
 
 #include "vulkan/vulkan.h"
-#include "VulkanBuffer.h"
+class VulkanBuffer;
 
-class VulkanInterface;
+static const int MAX_SWAP_IMAGES = 3;
 
-class VulkanBuffer
+class SwapchainStuff
 {
     friend class VulkanInterface;
 
 protected:
-    VkBuffer m_Buffer;
-    VkDeviceMemory m_BufferMemory;
-
-    VulkanInterface* m_pInterface;
+    VkImage m_Images;
+    VkImageView m_ImageViews;
+    VkCommandBuffer m_CommandBuffers;
+    VkFramebuffer m_Framebuffers;
+    VulkanBuffer* m_UBO_Matrices;
+    VkDescriptorSet m_DescriptorSets;
 
 protected:
+    void NullEverything();
 
 public:
-    VulkanBuffer();
-    virtual ~VulkanBuffer();
-
-    void Create(VulkanInterface* pInterface, VkBufferUsageFlags usageFlags, const void* pData, unsigned int sizeInBytes);
-    void Destroy();
-
-    void BufferData(const void* pData, unsigned int sizeInBytes);
-
-    VkBuffer GetBuffer() { return m_Buffer; }
+    SwapchainStuff();
+    ~SwapchainStuff();
 };
 
-#endif //__VulkanBuffer_H__
+#endif //__VulkanSwapchainObject_H__

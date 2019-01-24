@@ -98,6 +98,7 @@
     <ClCompile Include="Source\VulkanBuffer.cpp" />
     <ClCompile Include="Source\VulkanInterface.cpp" />
     <ClCompile Include="Source\VulkanShader.cpp" />
+    <ClCompile Include="Source\VulkanSwapchainObject.cpp" />
     <ClCompile Include="Source\VulkanWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -110,6 +111,7 @@
     <ClInclude Include="Source\VulkanBuffer.h" />
     <ClInclude Include="Source\VulkanInterface.h" />
     <ClInclude Include="Source\VulkanShader.h" />
+    <ClInclude Include="Source\VulkanSwapchainObject.h" />
     <ClInclude Include="Source\VulkanWindow.h" />
   </ItemGroup>
   <ItemGroup>

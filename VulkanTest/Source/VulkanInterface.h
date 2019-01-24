@@ -12,6 +12,9 @@
 
 #include "vulkan/vulkan.h"
 #include "VulkanWindow.h"
+#include "VulkanSwapchainObject.h"
+
+#include "Math/MyTypes.h"
 
 class VulkanShader;
 class VulkanBuffer;
@@ -24,8 +27,7 @@ protected:
     VulkanWindow* m_Window;
     VulkanShader* m_TempShader;
     VulkanBuffer* m_TriangleBuffer;
-    VkDescriptorSetLayout m_UBODescriptorSet;
-    VulkanBuffer* m_UniformBuffer_Matrices[3];
+    VkDescriptorSetLayout m_UBODescriptorSetLayout;
 
     VkInstance m_VulkanInstance;
     VkPhysicalDevice m_PhysicalDevice;
@@ -38,15 +40,14 @@ protected:
     //uint32_t m_PresentQueueFamilyIndex;
 
     VkCommandPool m_CommandBufferPool;
+    VkDescriptorPool m_DescriptorPool;
 
     uint32_t m_SurfaceWidth;
     uint32_t m_SurfaceHeight;
 
     VkSwapchainKHR m_Swapchain;
-    VkImage m_SwapchainImages[3];
-    VkImageView m_SwapchainImageViews[3];
-    VkCommandBuffer m_SwapchainCommandBuffers[3];
-    VkFramebuffer m_Framebuffers[3];
+    uint32 m_SwapchainImageCount; // Currently hardcoded to 3.
+    SwapchainStuff m_SwapchainStuff[3];
     uint32_t m_CurrentSwapchainImageIndex;
 
     VkSemaphore m_ImageAcquiredSemaphore;
@@ -66,13 +67,18 @@ protected:
     void CreateInterface();
     void CreateSurface(const char* windowName, int width, int height);
     void CreateSwapchain();
+
     void CreateCommandBufferPool();
+
+    void CreateDescriptorPool();
+    void CreateDescriptorSets();
+
     void CreateSemaphores();
     void CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayout);
 
     VkDescriptorSetLayout CreateUBODescriptorSetLayout();
     VkCommandBuffer CreateCommandBuffer();
-    void SetupCommandBuffers();
+    void SetupCommandBuffers(uint32 vertexCount);
 
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 

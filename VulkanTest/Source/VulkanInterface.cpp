@@ -13,14 +13,16 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan/vk_sdk_platform.h"
 
+#include "VulkanBuffer.h"
 #include "VulkanInterface.h"
 #include "VulkanShader.h"
-#include "VulkanBuffer.h"
-
+#include "VulkanSwapchainObject.h"
 #include "Structs.h"
 
 VulkanInterface::VulkanInterface()
 {
+    m_SwapchainImageCount = 3;
+
     NullEverything();
 }
 
@@ -33,7 +35,7 @@ void VulkanInterface::NullEverything()
     m_Window = nullptr;
     m_TempShader = nullptr;
     m_TriangleBuffer = nullptr;
-    m_UBODescriptorSet = VK_NULL_HANDLE;
+    m_UBODescriptorSetLayout = VK_NULL_HANDLE;
 
     m_VulkanInstance = VK_NULL_HANDLE;
     m_PhysicalDevice = VK_NULL_HANDLE;
@@ -46,18 +48,15 @@ void VulkanInterface::NullEverything()
     //m_PresentQueueFamilyIndex = UINT_MAX;
 
     m_CommandBufferPool = VK_NULL_HANDLE;
+    m_DescriptorPool = VK_NULL_HANDLE;
 
     m_SurfaceWidth = 0;
     m_SurfaceHeight = 0;
 
     m_Swapchain = VK_NULL_HANDLE;
-    for( int i=0; i<3; i++ )
+    for( uint32 i=0; i<MAX_SWAP_IMAGES; i++ )
     {
-        m_SwapchainImages[i] = VK_NULL_HANDLE;
-        m_SwapchainImageViews[i] = VK_NULL_HANDLE;
-        m_SwapchainCommandBuffers[i] = VK_NULL_HANDLE;
-        m_Framebuffers[i] = VK_NULL_HANDLE;
-        m_UniformBuffer_Matrices[i] = nullptr;
+        m_SwapchainStuff[i].NullEverything();
     }
     m_CurrentSwapchainImageIndex = UINT_MAX;
 
@@ -78,45 +77,60 @@ void VulkanInterface::Create(const char* windowName, int width, int height)
     CreateSurface( windowName, width, height );
     CreateSwapchain();
     CreateCommandBufferPool();
+    CreateDescriptorPool();
     CreateSemaphores();
 
     // Copy triangle verts into a buffer.
+    uint32 vertexCount = 18;
     {
         m_TriangleBuffer = new VulkanBuffer();
         const VertexFormat vertices[] =
         {
-            { { 0.0f, -0.5f}, { 255,   0,   0 } },
-            { { 0.5f,  0.5f}, {   0, 255,   0 } },
-            { {-0.5f,  0.5f}, {   0,   0, 255 } },
+            { {-1.0f, -1.0f, -1.0f}, {   0,   0, 255, 255 } }, // Front // BL
+            { {-1.0f,  1.0f, -1.0f}, {   0,   0, 255, 255 } },          // TL
+            { { 1.0f,  1.0f, -1.0f}, {   0,   0, 255, 255 } },          // TR
+            { {-1.0f, -1.0f, -1.0f}, {   0,   0, 255, 255 } }, // Front // BL-
+            { { 1.0f,  1.0f, -1.0f}, {   0,   0, 255, 255 } },          // TR-
+            { { 1.0f, -1.0f, -1.0f}, {   0,   0, 255, 255 } },          // BR
+
+            { { 1.0f, -1.0f, -1.0f}, { 255,   0,   0, 255 } }, // Right Side // BL
+            { { 1.0f,  1.0f, -1.0f}, { 255,   0,   0, 255 } },               // TL
+            { { 1.0f,  1.0f,  1.0f}, { 255,   0,   0, 255 } },               // TR
+            { { 1.0f, -1.0f, -1.0f}, { 255,   0,   0, 255 } }, // Right Side // BL-
+            { { 1.0f,  1.0f,  1.0f}, { 255,   0,   0, 255 } },               // TR-
+            { { 1.0f, -1.0f,  1.0f}, { 255,   0,   0, 255 } },               // BR
+
+            { {-1.0f, -1.0f,  1.0f}, { 128,   0,   0, 255 } }, // Left Side // BL
+            { {-1.0f,  1.0f,  1.0f}, { 128,   0,   0, 255 } },              // TL
+            { {-1.0f,  1.0f, -1.0f}, { 128,   0,   0, 255 } },              // TR
+            { {-1.0f, -1.0f,  1.0f}, { 128,   0,   0, 255 } }, // Left Side // BL-
+            { {-1.0f,  1.0f, -1.0f}, { 128,   0,   0, 255 } },              // TR-
+            { {-1.0f, -1.0f, -1.0f}, { 128,   0,   0, 255 } },              // BR
         };
-        int vertexCount = 3;
 
         m_TriangleBuffer->Create( this, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof( VertexFormat ) * vertexCount );
     }
 
-    m_UBODescriptorSet = CreateUBODescriptorSetLayout();
-    CreateRenderPassAndPipeline( m_UBODescriptorSet );
+    m_UBODescriptorSetLayout = CreateUBODescriptorSetLayout();
 
     // Create UBOs for matrices.  One per swapchain image.
-    for( int i=0; i<3; i++ )
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
     {
-        m_UniformBuffer_Matrices[i] = new VulkanBuffer();
-        //UniformBufferObject_Matrices matrices;
-        //matrices.m_World.SetIdentity();
-        //matrices.m_View.SetIdentity();
-        //matrices.m_Proj.SetIdentity();
-
-        //m_UniformBuffer_Matrices[i]->Create( this, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, &matrices, sizeof( UniformBufferObject_Matrices ) );
-        m_UniformBuffer_Matrices[i]->Create( this, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, nullptr, sizeof( UniformBufferObject_Matrices ) );
+        m_SwapchainStuff[i].m_UBO_Matrices = new VulkanBuffer();
+        m_SwapchainStuff[i].m_UBO_Matrices->Create( this, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, nullptr, sizeof( UniformBufferObject_Matrices ) );
     }
 
-    SetupCommandBuffers();
+    CreateDescriptorSets();
+
+    CreateRenderPassAndPipeline( m_UBODescriptorSetLayout );
+
+    SetupCommandBuffers( vertexCount );
 }
 
 void VulkanInterface::Destroy()
 {
     // Destroy Vulkan objects.
-    vkDestroyDescriptorSetLayout( m_Device, m_UBODescriptorSet, nullptr );
+    vkDestroyDescriptorSetLayout( m_Device, m_UBODescriptorSetLayout, nullptr );
 
     vkDestroyPipelineLayout( m_Device, m_PipelineLayout, nullptr );
     vkDestroyPipeline( m_Device, m_Pipeline, nullptr );
@@ -128,18 +142,19 @@ void VulkanInterface::Destroy()
     vkDestroySwapchainKHR( m_Device, m_Swapchain, nullptr );
 
     vkDestroyCommandPool( m_Device, m_CommandBufferPool, nullptr );
+    vkDestroyDescriptorPool( m_Device, m_DescriptorPool, nullptr );
 
-    for( int i=0; i<3; i++ )
+    for( uint32 i=0; i<MAX_SWAP_IMAGES; i++ )
     {
-        vkDestroyImageView( m_Device, m_SwapchainImageViews[i], nullptr );
-        vkDestroyFramebuffer( m_Device, m_Framebuffers[i], nullptr );
+        vkDestroyImageView( m_Device, m_SwapchainStuff[i].m_ImageViews, nullptr );
+        vkDestroyFramebuffer( m_Device, m_SwapchainStuff[i].m_Framebuffers, nullptr );
     }
 
     delete m_TempShader;
     delete m_TriangleBuffer;
-    for( int i=0; i<3; i++ )
+    for( uint32 i=0; i<MAX_SWAP_IMAGES; i++ )
     {
-        delete m_UniformBuffer_Matrices[i];
+        delete m_SwapchainStuff[i].m_UBO_Matrices;
     }
 
     vkDestroyDevice( m_Device, nullptr );
@@ -355,7 +370,7 @@ void VulkanInterface::CreateSwapchain()
     swapchainCreateInfo.pNext = nullptr;
     swapchainCreateInfo.flags = 0;
     swapchainCreateInfo.surface = m_Surface;
-    swapchainCreateInfo.minImageCount = 3; // Triple buffer.
+    swapchainCreateInfo.minImageCount = m_SwapchainImageCount; // Triple buffer.
     swapchainCreateInfo.imageFormat = surfaceFormats[surfaceFormatIndex].format; //VK_FORMAT_R8G8B8A8_UNORM;
     swapchainCreateInfo.imageColorSpace = surfaceFormats[surfaceFormatIndex].colorSpace; //VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     swapchainCreateInfo.imageExtent = surfaceCapabilities.currentExtent;
@@ -374,18 +389,23 @@ void VulkanInterface::CreateSwapchain()
     assert( result == VK_SUCCESS );
 
     // Get swapchain images.
-    uint32_t swapchainImageCount = 3;
-    result = vkGetSwapchainImagesKHR( m_Device, m_Swapchain, &swapchainImageCount, m_SwapchainImages );
+    VkImage images[MAX_SWAP_IMAGES];
+    result = vkGetSwapchainImagesKHR( m_Device, m_Swapchain, &m_SwapchainImageCount, images );
     assert( result == VK_SUCCESS );
 
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
+    {
+        m_SwapchainStuff[i].m_Images = images[i];
+    }
+
     // Create image views.
-    for( int i=0; i<3; i++ )
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
     {
         VkImageViewCreateInfo imageViewCreateInfo = {};
         imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         imageViewCreateInfo.pNext = nullptr;
         imageViewCreateInfo.flags = 0;
-        imageViewCreateInfo.image = m_SwapchainImages[i];
+        imageViewCreateInfo.image = m_SwapchainStuff[i].m_Images;
         imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         imageViewCreateInfo.format = surfaceFormats[surfaceFormatIndex].format; //VK_FORMAT_R8G8B8A8_UNORM;
         imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
@@ -398,7 +418,7 @@ void VulkanInterface::CreateSwapchain()
         imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
         imageViewCreateInfo.subresourceRange.layerCount = 1;
 
-        result = vkCreateImageView( m_Device, &imageViewCreateInfo, nullptr, &m_SwapchainImageViews[i] );
+        result = vkCreateImageView( m_Device, &imageViewCreateInfo, nullptr, &m_SwapchainStuff[i].m_ImageViews );
         assert( result == VK_SUCCESS );
     }
 }
@@ -414,9 +434,74 @@ void VulkanInterface::CreateCommandBufferPool()
     VkResult result = vkCreateCommandPool( m_Device, &commandPoolCreateInfo, nullptr, &m_CommandBufferPool );    
     assert( result == VK_SUCCESS );
 
-    for( int i=0; i<3; i++ )
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
     {
-        m_SwapchainCommandBuffers[i] = CreateCommandBuffer();
+        m_SwapchainStuff[i].m_CommandBuffers = CreateCommandBuffer();
+    }
+}
+
+void VulkanInterface::CreateDescriptorPool()
+{
+    VkDescriptorPoolSize poolSize = {};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = m_SwapchainImageCount;
+
+    VkDescriptorPoolCreateInfo poolInfo = {};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.pNext = nullptr;
+    poolInfo.flags = 0;
+    poolInfo.maxSets = m_SwapchainImageCount;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+
+    VkResult result = vkCreateDescriptorPool( m_Device, &poolInfo, nullptr, &m_DescriptorPool );
+    assert( result == VK_SUCCESS );
+}
+
+void VulkanInterface::CreateDescriptorSets()
+{
+    VkDescriptorSetLayout layouts[3];
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
+    {
+        layouts[i] = m_UBODescriptorSetLayout;
+    }
+
+    VkDescriptorSetAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.pNext = nullptr;
+    allocInfo.descriptorPool = m_DescriptorPool;
+    allocInfo.descriptorSetCount = m_SwapchainImageCount;
+    allocInfo.pSetLayouts = layouts;
+
+    VkDescriptorSet descriptorSets[MAX_SWAP_IMAGES];
+    VkResult result = vkAllocateDescriptorSets( m_Device, &allocInfo, descriptorSets );
+    assert( result == VK_SUCCESS );
+
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
+    {
+        m_SwapchainStuff[i].m_DescriptorSets = descriptorSets[i];
+    }
+
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
+    {
+        VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.buffer = m_SwapchainStuff[i].m_UBO_Matrices->GetBuffer();
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof( UniformBufferObject_Matrices );
+
+        VkWriteDescriptorSet descriptorWrite = {};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.pNext = nullptr;
+        descriptorWrite.dstSet = m_SwapchainStuff[i].m_DescriptorSets;
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.pImageInfo = nullptr;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.pTexelBufferView = nullptr;
+
+        vkUpdateDescriptorSets( m_Device, 1, &descriptorWrite, 0, nullptr );
     }
 }
 
@@ -558,7 +643,7 @@ void VulkanInterface::CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayou
     }
 
     // Create framebuffers.
-    for( int i=0; i<3; i++ )
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
     {
         VkFramebufferCreateInfo framebufferCreateInfo = {};
         framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -566,12 +651,12 @@ void VulkanInterface::CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayou
         framebufferCreateInfo.flags = 0;
         framebufferCreateInfo.renderPass = m_RenderPass;
         framebufferCreateInfo.attachmentCount = 1;
-        framebufferCreateInfo.pAttachments = &m_SwapchainImageViews[i];
+        framebufferCreateInfo.pAttachments = &m_SwapchainStuff[i].m_ImageViews;
         framebufferCreateInfo.width = m_SurfaceWidth;
         framebufferCreateInfo.height = m_SurfaceHeight;
         framebufferCreateInfo.layers = 1;
 
-        result = vkCreateFramebuffer( m_Device, &framebufferCreateInfo, nullptr, &m_Framebuffers[i] );
+        result = vkCreateFramebuffer( m_Device, &framebufferCreateInfo, nullptr, &m_SwapchainStuff[i].m_Framebuffers );
         assert( result == VK_SUCCESS );
     }
 
@@ -756,7 +841,7 @@ void VulkanInterface::CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayou
     }
 }
 
-void VulkanInterface::SetupCommandBuffers()
+void VulkanInterface::SetupCommandBuffers(uint32 vertexCount)
 {
     VkCommandBufferBeginInfo bufferBeginInfo = {};
     bufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -781,7 +866,7 @@ void VulkanInterface::SetupCommandBuffers()
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.pNext = nullptr;
     renderPassInfo.renderPass = m_RenderPass;
-    //renderPassInfo.framebuffer = m_Framebuffers[i]; // Set in loop below.
+    //renderPassInfo.framebuffer = m_SwapchainStuff[i].m_Framebuffers; // Set in loop below.
     renderPassInfo.renderArea.offset.x = 0;
     renderPassInfo.renderArea.offset.y = 0;
     renderPassInfo.renderArea.extent.width = m_SurfaceWidth;
@@ -789,26 +874,28 @@ void VulkanInterface::SetupCommandBuffers()
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearValue;
 
-    for( int i=0; i<3; i++ )
+    for( uint32 i=0; i<m_SwapchainImageCount; i++ )
     {
-        renderPassInfo.framebuffer = m_Framebuffers[i];
+        renderPassInfo.framebuffer = m_SwapchainStuff[i].m_Framebuffers;
 
-        VkResult result = vkBeginCommandBuffer( m_SwapchainCommandBuffers[i], &bufferBeginInfo );
+        VkResult result = vkBeginCommandBuffer( m_SwapchainStuff[i].m_CommandBuffers, &bufferBeginInfo );
         assert( result == VK_SUCCESS );
 
-        vkCmdBeginRenderPass( m_SwapchainCommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
+        vkCmdBeginRenderPass( m_SwapchainStuff[i].m_CommandBuffers, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE );
 
-        vkCmdBindPipeline( m_SwapchainCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline );
+        vkCmdBindPipeline( m_SwapchainStuff[i].m_CommandBuffers, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline );
 
         VkBuffer vertexBuffers[] = { m_TriangleBuffer->m_Buffer };
         VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers( m_SwapchainCommandBuffers[i], 0, 1, vertexBuffers, offsets );
+        vkCmdBindVertexBuffers( m_SwapchainStuff[i].m_CommandBuffers, 0, 1, vertexBuffers, offsets );
 
-        vkCmdDraw( m_SwapchainCommandBuffers[i], 3, 1, 0, 0 );
+        vkCmdBindDescriptorSets( m_SwapchainStuff[i].m_CommandBuffers, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1, &m_SwapchainStuff[i].m_DescriptorSets, 0, nullptr );
 
-        vkCmdEndRenderPass( m_SwapchainCommandBuffers[i]);
+        vkCmdDraw( m_SwapchainStuff[i].m_CommandBuffers, vertexCount, 1, 0, 0 );
+
+        vkCmdEndRenderPass( m_SwapchainStuff[i].m_CommandBuffers );
 	
-        result = vkEndCommandBuffer( m_SwapchainCommandBuffers[i] );
+        result = vkEndCommandBuffer( m_SwapchainStuff[i].m_CommandBuffers );
         assert( result == VK_SUCCESS );
     }
 }
@@ -837,12 +924,15 @@ void VulkanInterface::Render()
 
     // Update our UBO.
     {
+        static float frameCount = 0.0f;
         UniformBufferObject_Matrices matrices;
-        matrices.m_World.SetIdentity();
-        matrices.m_View.SetIdentity();
-        matrices.m_Proj.SetIdentity();
+        matrices.m_World.CreateSRT( Vector3(1,1,1), Vector3(0,frameCount,0), Vector3(0,0,0) );
+        matrices.m_View.CreateLookAtView( Vector3(0,0,-5), Vector3(0,1,0), Vector3(0,0,0) );
+        matrices.m_Proj.CreatePerspectiveVFoV( 45.0f, (float)m_SurfaceWidth/m_SurfaceHeight, 0.01f, 100.0f );
+        matrices.m_Proj.m22 *= -1; // Hack for vulkan clip-space being upside down. (-1,-1) at top left.
+        frameCount += 1.0f;
 
-        m_UniformBuffer_Matrices[m_CurrentSwapchainImageIndex]->BufferData( &matrices, sizeof( UniformBufferObject_Matrices ) );
+        m_SwapchainStuff[m_CurrentSwapchainImageIndex].m_UBO_Matrices->BufferData( &matrices, sizeof( UniformBufferObject_Matrices ) );
     }
 
     VkSemaphore waitSemaphores[] = { m_ImageAcquiredSemaphore };
@@ -857,7 +947,7 @@ void VulkanInterface::Render()
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &m_SwapchainCommandBuffers[m_CurrentSwapchainImageIndex];
+    submitInfo.pCommandBuffers = &m_SwapchainStuff[m_CurrentSwapchainImageIndex].m_CommandBuffers;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
     

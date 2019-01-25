@@ -26,7 +26,8 @@ class VulkanInterface
 protected:
     VulkanWindow* m_Window;
     VulkanShader* m_TempShader;
-    VulkanBuffer* m_TriangleBuffer;
+    VulkanBuffer* m_VertexBuffer;
+    VulkanBuffer* m_IndexBuffer;
     VkDescriptorSetLayout m_UBODescriptorSetLayout;
 
     VkInstance m_VulkanInstance;
@@ -78,7 +79,7 @@ protected:
 
     VkDescriptorSetLayout CreateUBODescriptorSetLayout();
     VkCommandBuffer CreateCommandBuffer();
-    void SetupCommandBuffers(uint32 vertexCount);
+    void SetupCommandBuffers(uint32 drawCount);
 
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 

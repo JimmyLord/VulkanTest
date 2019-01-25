@@ -34,7 +34,8 @@ void VulkanInterface::NullEverything()
 {
     m_Window = nullptr;
     m_TempShader = nullptr;
-    m_TriangleBuffer = nullptr;
+    m_VertexBuffer = nullptr;
+    m_IndexBuffer = nullptr;
     m_UBODescriptorSetLayout = VK_NULL_HANDLE;
 
     m_VulkanInstance = VK_NULL_HANDLE;
@@ -80,35 +81,58 @@ void VulkanInterface::Create(const char* windowName, int width, int height)
     CreateDescriptorPool();
     CreateSemaphores();
 
-    // Copy triangle verts into a buffer.
-    uint32 vertexCount = 18;
+    // Copy cube verts into a buffer.
+    uint32 vertexCount = 24;
+    uint32 indexCount = 36;
     {
-        m_TriangleBuffer = new VulkanBuffer();
+        m_VertexBuffer = new VulkanBuffer();
+        m_IndexBuffer = new VulkanBuffer();
+
         const VertexFormat vertices[] =
         {
             { {-1.0f, -1.0f, -1.0f}, {   0,   0, 255, 255 } }, // Front // BL
             { {-1.0f,  1.0f, -1.0f}, {   0,   0, 255, 255 } },          // TL
             { { 1.0f,  1.0f, -1.0f}, {   0,   0, 255, 255 } },          // TR
-            { {-1.0f, -1.0f, -1.0f}, {   0,   0, 255, 255 } }, // Front // BL-
-            { { 1.0f,  1.0f, -1.0f}, {   0,   0, 255, 255 } },          // TR-
             { { 1.0f, -1.0f, -1.0f}, {   0,   0, 255, 255 } },          // BR
 
             { { 1.0f, -1.0f, -1.0f}, { 255,   0,   0, 255 } }, // Right Side // BL
             { { 1.0f,  1.0f, -1.0f}, { 255,   0,   0, 255 } },               // TL
             { { 1.0f,  1.0f,  1.0f}, { 255,   0,   0, 255 } },               // TR
-            { { 1.0f, -1.0f, -1.0f}, { 255,   0,   0, 255 } }, // Right Side // BL-
-            { { 1.0f,  1.0f,  1.0f}, { 255,   0,   0, 255 } },               // TR-
             { { 1.0f, -1.0f,  1.0f}, { 255,   0,   0, 255 } },               // BR
+
+            { { 1.0f, -1.0f,  1.0f}, {   0,   0, 128, 255 } }, // Back // BL
+            { { 1.0f,  1.0f,  1.0f}, {   0,   0, 128, 255 } },         // TL
+            { {-1.0f,  1.0f,  1.0f}, {   0,   0, 128, 255 } },         // TR
+            { {-1.0f, -1.0f,  1.0f}, {   0,   0, 128, 255 } },         // BR
 
             { {-1.0f, -1.0f,  1.0f}, { 128,   0,   0, 255 } }, // Left Side // BL
             { {-1.0f,  1.0f,  1.0f}, { 128,   0,   0, 255 } },              // TL
             { {-1.0f,  1.0f, -1.0f}, { 128,   0,   0, 255 } },              // TR
-            { {-1.0f, -1.0f,  1.0f}, { 128,   0,   0, 255 } }, // Left Side // BL-
-            { {-1.0f,  1.0f, -1.0f}, { 128,   0,   0, 255 } },              // TR-
             { {-1.0f, -1.0f, -1.0f}, { 128,   0,   0, 255 } },              // BR
+
+            { {-1.0f,  1.0f, -1.0f}, {   0, 255,   0, 255 } }, // Top // BL
+            { {-1.0f,  1.0f,  1.0f}, {   0, 255,   0, 255 } },        // TL
+            { { 1.0f,  1.0f,  1.0f}, {   0, 255,   0, 255 } },        // TR
+            { { 1.0f,  1.0f, -1.0f}, {   0, 255,   0, 255 } },        // BR
+
+            { {-1.0f, -1.0f,  1.0f}, {   0, 128,   0, 255 } }, // Bottom // BL
+            { {-1.0f, -1.0f, -1.0f}, {   0, 128,   0, 255 } },           // TL
+            { { 1.0f, -1.0f, -1.0f}, {   0, 128,   0, 255 } },           // TR
+            { { 1.0f, -1.0f,  1.0f}, {   0, 128,   0, 255 } },           // BR
         };
 
-        m_TriangleBuffer->Create( this, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof( VertexFormat ) * vertexCount );
+        const unsigned short indices[] =
+        {
+             0, 1, 2, 0, 2, 3,
+             4, 5, 6, 4, 6, 7,
+             8, 9,10, 8,10,11,
+            12,13,14,12,14,15,
+            16,17,18,16,18,19,
+            20,21,22,20,22,23,
+        };
+
+        m_VertexBuffer->Create( this, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof( VertexFormat ) * vertexCount );
+        m_IndexBuffer->Create( this, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices, sizeof( unsigned short ) * indexCount );
     }
 
     m_UBODescriptorSetLayout = CreateUBODescriptorSetLayout();
@@ -124,7 +148,7 @@ void VulkanInterface::Create(const char* windowName, int width, int height)
 
     CreateRenderPassAndPipeline( m_UBODescriptorSetLayout );
 
-    SetupCommandBuffers( vertexCount );
+    SetupCommandBuffers( indexCount );
 }
 
 void VulkanInterface::Destroy()
@@ -151,7 +175,8 @@ void VulkanInterface::Destroy()
     }
 
     delete m_TempShader;
-    delete m_TriangleBuffer;
+    delete m_VertexBuffer;
+    delete m_IndexBuffer;
     for( uint32 i=0; i<MAX_SWAP_IMAGES; i++ )
     {
         delete m_SwapchainStuff[i].m_UBO_Matrices;
@@ -841,7 +866,7 @@ void VulkanInterface::CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayou
     }
 }
 
-void VulkanInterface::SetupCommandBuffers(uint32 vertexCount)
+void VulkanInterface::SetupCommandBuffers(uint32 drawCount)
 {
     VkCommandBufferBeginInfo bufferBeginInfo = {};
     bufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -885,13 +910,15 @@ void VulkanInterface::SetupCommandBuffers(uint32 vertexCount)
 
         vkCmdBindPipeline( m_SwapchainStuff[i].m_CommandBuffers, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline );
 
-        VkBuffer vertexBuffers[] = { m_TriangleBuffer->m_Buffer };
+        VkBuffer vertexBuffers[] = { m_VertexBuffer->m_Buffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers( m_SwapchainStuff[i].m_CommandBuffers, 0, 1, vertexBuffers, offsets );
+        vkCmdBindIndexBuffer( m_SwapchainStuff[i].m_CommandBuffers, m_IndexBuffer->m_Buffer, 0, VK_INDEX_TYPE_UINT16 );
 
         vkCmdBindDescriptorSets( m_SwapchainStuff[i].m_CommandBuffers, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1, &m_SwapchainStuff[i].m_DescriptorSets, 0, nullptr );
 
-        vkCmdDraw( m_SwapchainStuff[i].m_CommandBuffers, vertexCount, 1, 0, 0 );
+        //vkCmdDraw( m_SwapchainStuff[i].m_CommandBuffers, drawCount, 1, 0, 0 );
+        vkCmdDrawIndexed( m_SwapchainStuff[i].m_CommandBuffers, drawCount, 1, 0, 0, 0 );
 
         vkCmdEndRenderPass( m_SwapchainStuff[i].m_CommandBuffers );
 	
@@ -926,7 +953,7 @@ void VulkanInterface::Render()
     {
         static float frameCount = 0.0f;
         UniformBufferObject_Matrices matrices;
-        matrices.m_World.CreateSRT( Vector3(1,1,1), Vector3(0,frameCount,0), Vector3(0,0,0) );
+        matrices.m_World.CreateSRT( Vector3(1,1,1), Vector3(0,frameCount,frameCount/1.5f), Vector3(0,0,0) );
         matrices.m_View.CreateLookAtView( Vector3(0,0,-5), Vector3(0,1,0), Vector3(0,0,0) );
         matrices.m_Proj.CreatePerspectiveVFoV( 45.0f, (float)m_SurfaceWidth/m_SurfaceHeight, 0.01f, 100.0f );
         matrices.m_Proj.m22 *= -1; // Hack for vulkan clip-space being upside down. (-1,-1) at top left.

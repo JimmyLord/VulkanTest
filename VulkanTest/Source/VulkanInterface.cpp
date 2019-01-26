@@ -15,6 +15,7 @@
 
 #include "VulkanBuffer.h"
 #include "VulkanInterface.h"
+#include "VulkanMesh.h"
 #include "VulkanShader.h"
 #include "VulkanSwapchainObject.h"
 #include "Structs.h"
@@ -34,8 +35,6 @@ void VulkanInterface::NullEverything()
 {
     m_Window = nullptr;
     m_TempShader = nullptr;
-    m_VertexBuffer = nullptr;
-    m_IndexBuffer = nullptr;
     m_UBODescriptorSetLayout = VK_NULL_HANDLE;
 
     m_VulkanInstance = VK_NULL_HANDLE;
@@ -81,59 +80,6 @@ void VulkanInterface::Create(const char* windowName, int width, int height)
     CreateDescriptorPool();
     CreateSemaphores();
 
-    // Copy cube verts into a buffer.
-    uint32 vertexCount = 24;
-    uint32 indexCount = 36;
-    {
-        m_VertexBuffer = new VulkanBuffer();
-        m_IndexBuffer = new VulkanBuffer();
-
-        const VertexFormat vertices[] =
-        {
-            { {-1.0f, -1.0f, -1.0f}, {   0,   0, 255, 255 } }, // Front // BL
-            { {-1.0f,  1.0f, -1.0f}, {   0,   0, 255, 255 } },          // TL
-            { { 1.0f,  1.0f, -1.0f}, {   0,   0, 255, 255 } },          // TR
-            { { 1.0f, -1.0f, -1.0f}, {   0,   0, 255, 255 } },          // BR
-
-            { { 1.0f, -1.0f, -1.0f}, { 255,   0,   0, 255 } }, // Right Side // BL
-            { { 1.0f,  1.0f, -1.0f}, { 255,   0,   0, 255 } },               // TL
-            { { 1.0f,  1.0f,  1.0f}, { 255,   0,   0, 255 } },               // TR
-            { { 1.0f, -1.0f,  1.0f}, { 255,   0,   0, 255 } },               // BR
-
-            { { 1.0f, -1.0f,  1.0f}, {   0,   0, 128, 255 } }, // Back // BL
-            { { 1.0f,  1.0f,  1.0f}, {   0,   0, 128, 255 } },         // TL
-            { {-1.0f,  1.0f,  1.0f}, {   0,   0, 128, 255 } },         // TR
-            { {-1.0f, -1.0f,  1.0f}, {   0,   0, 128, 255 } },         // BR
-
-            { {-1.0f, -1.0f,  1.0f}, { 128,   0,   0, 255 } }, // Left Side // BL
-            { {-1.0f,  1.0f,  1.0f}, { 128,   0,   0, 255 } },              // TL
-            { {-1.0f,  1.0f, -1.0f}, { 128,   0,   0, 255 } },              // TR
-            { {-1.0f, -1.0f, -1.0f}, { 128,   0,   0, 255 } },              // BR
-
-            { {-1.0f,  1.0f, -1.0f}, {   0, 255,   0, 255 } }, // Top // BL
-            { {-1.0f,  1.0f,  1.0f}, {   0, 255,   0, 255 } },        // TL
-            { { 1.0f,  1.0f,  1.0f}, {   0, 255,   0, 255 } },        // TR
-            { { 1.0f,  1.0f, -1.0f}, {   0, 255,   0, 255 } },        // BR
-
-            { {-1.0f, -1.0f,  1.0f}, {   0, 128,   0, 255 } }, // Bottom // BL
-            { {-1.0f, -1.0f, -1.0f}, {   0, 128,   0, 255 } },           // TL
-            { { 1.0f, -1.0f, -1.0f}, {   0, 128,   0, 255 } },           // TR
-            { { 1.0f, -1.0f,  1.0f}, {   0, 128,   0, 255 } },           // BR
-        };
-
-        const unsigned short indices[] =
-        {
-             0, 1, 2, 0, 2, 3,
-             4, 5, 6, 4, 6, 7,
-             8, 9,10, 8,10,11,
-            12,13,14,12,14,15,
-            16,17,18,16,18,19,
-            20,21,22,20,22,23,
-        };
-
-        m_VertexBuffer->Create( this, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices, sizeof( VertexFormat ) * vertexCount );
-        m_IndexBuffer->Create( this, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indices, sizeof( unsigned short ) * indexCount );
-    }
 
     m_UBODescriptorSetLayout = CreateUBODescriptorSetLayout();
 
@@ -147,8 +93,6 @@ void VulkanInterface::Create(const char* windowName, int width, int height)
     CreateDescriptorSets();
 
     CreateRenderPassAndPipeline( m_UBODescriptorSetLayout );
-
-    SetupCommandBuffers( indexCount );
 }
 
 void VulkanInterface::Destroy()
@@ -175,8 +119,6 @@ void VulkanInterface::Destroy()
     }
 
     delete m_TempShader;
-    delete m_VertexBuffer;
-    delete m_IndexBuffer;
     for( uint32 i=0; i<MAX_SWAP_IMAGES; i++ )
     {
         delete m_SwapchainStuff[i].m_UBO_Matrices;
@@ -866,7 +808,7 @@ void VulkanInterface::CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayou
     }
 }
 
-void VulkanInterface::SetupCommandBuffers(uint32 drawCount)
+void VulkanInterface::SetupCommandBuffers(VulkanMesh* pMesh)
 {
     VkCommandBufferBeginInfo bufferBeginInfo = {};
     bufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -910,15 +852,15 @@ void VulkanInterface::SetupCommandBuffers(uint32 drawCount)
 
         vkCmdBindPipeline( m_SwapchainStuff[i].m_CommandBuffers, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline );
 
-        VkBuffer vertexBuffers[] = { m_VertexBuffer->m_Buffer };
+        VkBuffer vertexBuffers[] = { pMesh->GetVertexBuffer()->m_Buffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers( m_SwapchainStuff[i].m_CommandBuffers, 0, 1, vertexBuffers, offsets );
-        vkCmdBindIndexBuffer( m_SwapchainStuff[i].m_CommandBuffers, m_IndexBuffer->m_Buffer, 0, VK_INDEX_TYPE_UINT16 );
+        vkCmdBindIndexBuffer( m_SwapchainStuff[i].m_CommandBuffers, pMesh->GetIndexBuffer()->m_Buffer, 0, VK_INDEX_TYPE_UINT16 );
 
         vkCmdBindDescriptorSets( m_SwapchainStuff[i].m_CommandBuffers, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1, &m_SwapchainStuff[i].m_DescriptorSets, 0, nullptr );
 
         //vkCmdDraw( m_SwapchainStuff[i].m_CommandBuffers, drawCount, 1, 0, 0 );
-        vkCmdDrawIndexed( m_SwapchainStuff[i].m_CommandBuffers, drawCount, 1, 0, 0, 0 );
+        vkCmdDrawIndexed( m_SwapchainStuff[i].m_CommandBuffers, pMesh->GetIndexCount(), 1, 0, 0, 0 );
 
         vkCmdEndRenderPass( m_SwapchainStuff[i].m_CommandBuffers );
 	

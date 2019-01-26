@@ -11,11 +11,17 @@
 #include <assert.h>
 
 #include "VulkanInterface.h"
+#include "VulkanMesh.h"
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     VulkanInterface* vulkanInterface = new VulkanInterface();
     vulkanInterface->Create( "Vulkan Test", 480, 270 );
+
+    VulkanMesh* cube = new VulkanMesh();
+    cube->CreateCube( vulkanInterface );
+
+    vulkanInterface->SetupCommandBuffers( cube );
 
     MSG msg;
     bool running = true;
@@ -40,7 +46,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
     }
 
-    vulkanInterface->Destroy();
+    cube->Destroy();
+    delete cube;
 
+    vulkanInterface->Destroy();
     delete vulkanInterface;
 }

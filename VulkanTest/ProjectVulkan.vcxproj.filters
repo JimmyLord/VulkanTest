@@ -42,6 +42,9 @@
     <ClCompile Include="Source\VulkanSwapchainObject.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\VulkanMesh.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\VulkanInterface.h">
@@ -75,6 +78,9 @@
       <Filter>Source\Math</Filter>
     </ClInclude>
     <ClInclude Include="Source\VulkanSwapchainObject.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\VulkanMesh.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>

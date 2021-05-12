@@ -61,11 +61,11 @@ void VulkanShader::Create(VkDevice device, const char* vertexShaderFilename, con
 
     long vertStringLength;
     const char* vertexShaderString = LoadCompleteFile( vertexShaderFilename, &vertStringLength );
-    assert( (int)vertexShaderString % 4 == 0 );
+    assert( (uintptr_t)vertexShaderString % 4 == 0 );
 
     long fragStringLength;
     const char* fragmentShaderString = LoadCompleteFile( fragmentShaderFilename, &fragStringLength );
-    assert( (int)fragmentShaderString % 4 == 0 );
+    assert( (uintptr_t)fragmentShaderString % 4 == 0 );
 
     m_VertexShader = CreateShader( vertexShaderString, vertStringLength );
     m_FragmentShader = CreateShader( fragmentShaderString, fragStringLength );

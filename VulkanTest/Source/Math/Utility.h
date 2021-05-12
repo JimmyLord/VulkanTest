@@ -15,7 +15,6 @@
 #include "MyTypes.h"
 
 #define MyAssert assert
-#define LOGError(a,b)
 #define PI 3.1415926535897932384626433832795f
 
 const float FEQUALEPSILON = 0.00001f;

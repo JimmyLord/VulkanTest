@@ -181,7 +181,7 @@ void VulkanInterface::CreateInterface()
         const int layerCount = 1;
         const char* layerList[layerCount] =
         {
-            "VK_LAYER_LUNARG_standard_validation"
+            "VK_LAYER_KHRONOS_validation"
         };
 
         // Setup instance creation info struct, using structs/lists setup above.
@@ -792,7 +792,7 @@ void VulkanInterface::CreateRenderPassAndPipeline(VkDescriptorSetLayout uboLayou
         graphicsPipelineCreateInfo.pDynamicState = nullptr;
         graphicsPipelineCreateInfo.layout = m_PipelineLayout;
         graphicsPipelineCreateInfo.renderPass = m_RenderPass;
-        graphicsPipelineCreateInfo.subpass = VK_NULL_HANDLE;
+        graphicsPipelineCreateInfo.subpass = 0;
         graphicsPipelineCreateInfo.basePipelineHandle;
         graphicsPipelineCreateInfo.basePipelineIndex = -1;
 

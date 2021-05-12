@@ -153,7 +153,7 @@ LRESULT CALLBACK VulkanWindow::StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam
             // Set the user data for this hWnd to the VulkanWindow* we passed in, used on first line of this method above.
             CREATESTRUCT* pcs = (CREATESTRUCT*)lParam;
             pVulkanWindow = (VulkanWindow*)pcs->lpCreateParams;
-            SetWindowLongPtr( hWnd, GWLP_USERDATA, (LONG)pVulkanWindow );
+            SetWindowLongPtr( hWnd, GWLP_USERDATA, (uintptr_t)pVulkanWindow );
 
             pVulkanWindow->m_hWnd = hWnd;
         }

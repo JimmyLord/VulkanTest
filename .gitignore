@@ -1,5 +1,1 @@
-*.opensdf
-*.sdf
-*.suo
-ipch/
-Output/
+build/

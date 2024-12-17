@@ -11,7 +11,7 @@
 #include <stdio.h>
 
 #define VK_USE_PLATFORM_WIN32_KHR
-#include "vulkan/vk_sdk_platform.h"
+#include "vulkan/vulkan.h"
 
 #include "Structs.h"
 #include "VulkanBuffer.h"
